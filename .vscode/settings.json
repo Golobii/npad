@@ -1,5 +1,14 @@
 {
   "files.associations": {
-    "fstream": "cpp"
+    "fstream": "cpp",
+    "bit": "cpp",
+    "*.tcc": "cpp",
+    "functional": "cpp",
+    "random": "cpp",
+    "limits": "cpp",
+    "unordered_map": "cpp",
+    "istream": "cpp",
+    "ostream": "cpp",
+    "streambuf": "cpp"
   }
 }

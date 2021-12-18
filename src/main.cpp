@@ -25,20 +25,15 @@ private:
   void moveCursorLeft();
   void moveCursorRight();
 
-  void scrollPage(int direction);
-
   unsigned int getPosition();
   unsigned int getNumOfLines();
   unsigned int getLineLength(unsigned int line);
 
-  unsigned int x, y;
-  unsigned int position;
+  unsigned int cursor_x, cursor_y;
+  unsigned int index;
   unsigned int max_x_position = 0;
 
   int max_y, max_x;
-
-  unsigned int display_start_line = 0;
-  unsigned int y_offset = 0;
 
   Mode mode = NORMAL_MODE;
 
@@ -55,22 +50,22 @@ void Base::open(string fileName)
   // pthread_create(&keysThread, NULL, &manageKeys, (void *)this);
   string cursor_display;
 
-  position = 0;
-  x = 0;
-  y = 0;
+  index = 0;
+  cursor_x = 0;
+  cursor_y = 0;
 
   while (true)
   {
     getmaxyx(stdscr, max_y, max_x);
     attron(COLOR_PAIR(NORMAL));
-    mvprintw(0, 0, "%s", Base::buffer.substr(display_start_line).c_str());
+    mvprintw(0, 0, "%s", Base::buffer.c_str());
     attron(COLOR_PAIR(CURSOR_COLOR_PAIR));
-    cursor_display = buffer.substr(position, 1).c_str();
+    cursor_display = buffer.substr(index, 1).c_str();
     if (cursor_display == "\n")
     {
       cursor_display = " ";
     }
-    mvprintw(y, x, cursor_display.c_str());
+    mvprintw(cursor_y, cursor_x, cursor_display.c_str());
     attroff(COLOR_PAIR(CURSOR_COLOR_PAIR));
     mvprintw(max_y - 1, 0, (mode == NORMAL_MODE ? "--NORMAL--" : "--INSERT--"));
     refresh();
@@ -82,9 +77,6 @@ void Base::open(string fileName)
       case 'q':
         endwin();
         exit(0);
-        break;
-      case 'g':
-        scrollPage(2);
         break;
       case 'i':
         mode = INSERT_MODE;
@@ -111,23 +103,23 @@ void Base::open(string fileName)
         mode = NORMAL_MODE;
         break;
       case 7: // backspace
-        if (position > 0)
+        if (index > 0)
         {
-          buffer.erase(position - 1, 1);
-          position--;
-          x--;
-          max_x_position = x;
+          buffer.erase(index - 1, 1);
+          index--;
+          cursor_x--;
+          max_x_position = cursor_x;
         }
         break;
       case '\n':
-        buffer.insert(position, "\n");
-        position++;
+        buffer.insert(index, "\n");
+        index++;
         lineDown();
         break;
       case '\t':
-        buffer.insert(position, "    ");
-        position += 4;
-        x += 4;
+        buffer.insert(index, "    ");
+        index += 4;
+        cursor_x += 4;
         break;
       case 2: // arrow down
         lineDown();
@@ -142,57 +134,33 @@ void Base::open(string fileName)
         lineUp();
         break;
       default:
-        buffer.insert(position, 1, ch);
-        position++;
-        x++;
-        log(std::to_string(ch));
+        buffer.insert(index, 1, ch);
+        index++;
+        cursor_x++;
         break;
       }
     }
   }
 }
 
-void Base::scrollPage(int direction)
-{
-  unsigned int num_of_char_skipped = 0;
-  char current;
-  unsigned int lines = 0;
-
-  while (lines < direction)
-  {
-    current = buffer.at(y_offset);
-    if (current == '\n')
-    {
-      lines++;
-    }
-    num_of_char_skipped++;
-    position++;
-    y_offset++;
-  }
-
-  y += direction;
-
-  display_start_line += num_of_char_skipped;
-}
-
 void Base::moveCursorLeft()
 {
-  if (x > 0)
+  if (cursor_x > 0)
   {
-    x--;
-    position--;
-    max_x_position = x;
+    cursor_x--;
+    index--;
+    max_x_position = cursor_x;
   }
 }
 
 void Base::moveCursorRight()
 {
-  unsigned int lineLength = getLineLength(y);
-  if (x + 1 < (mode == INSERT_MODE ? lineLength + 1 : lineLength))
+  unsigned int lineLength = getLineLength(cursor_y);
+  if (cursor_x + 1 < (mode == INSERT_MODE ? lineLength + 1 : lineLength))
   {
-    x++;
-    position++;
-    max_x_position = x;
+    cursor_x++;
+    index++;
+    max_x_position = cursor_x;
   }
 }
 
@@ -235,7 +203,7 @@ unsigned int Base::getPosition()
 {
   unsigned int pos = 0;
   char current = buffer.substr(pos, 1).c_str()[0];
-  int times = y;
+  int times = cursor_y;
 
   while (times > 0)
   {
@@ -251,66 +219,66 @@ unsigned int Base::getPosition()
     current = buffer.substr(pos, 1).c_str()[0];
   }
 
-  pos += x;
+  pos += cursor_x;
   return pos;
 }
 
 void Base::lineUp()
 {
   unsigned int lineLenght;
-  if (y > 0)
+  if (cursor_y > 0)
   {
-    y--;
+    cursor_y--;
   }
-  lineLenght = getLineLength(y);
-  if (x > lineLenght)
+  lineLenght = getLineLength(cursor_y);
+  if (cursor_x > lineLenght)
   {
     lineLenght = lineLenght;
     if (lineLenght > 0)
     {
-      x = lineLenght - 1;
+      cursor_x = lineLenght - 1;
     }
     else
     {
-      x = 0;
+      cursor_x = 0;
     }
   }
 
   if (max_x_position <= lineLenght)
   {
-    x = max_x_position;
+    cursor_x = max_x_position;
   }
 
-  position = getPosition();
+  index = getPosition();
 }
 
 void Base::lineDown()
 {
   unsigned int lineLenght;
-  if (y + 1 < getNumOfLines())
+  if (cursor_y + 1 < getNumOfLines())
   {
-    y++;
+    cursor_y++;
   }
 
-  lineLenght = getLineLength(y);
-  if (x > lineLenght)
+  lineLenght = getLineLength(cursor_y);
+  if (cursor_x > lineLenght)
   {
     if (lineLenght > 0)
     {
-      x = lineLenght - 1;
+      cursor_x = lineLenght - 1;
     }
     else
     {
-      x = 0;
+      cursor_x = 0;
     }
   }
 
   if (max_x_position <= lineLenght)
   {
-    x = max_x_position;
+    cursor_x = max_x_position;
   }
 
-  position = getPosition();
+  index = getPosition();
 }
 
 void Base::init()

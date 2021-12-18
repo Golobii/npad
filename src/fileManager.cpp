@@ -25,7 +25,7 @@ string FileManager::readFile(string fileName)
 void FileManager::log(string message)
 {
     std::ofstream logFile;
-    logFile.open("log.txt", std::ios_base::app);
+    logFile.open("log.log", std::ios_base::app);
     logFile << message << std::endl;
     logFile.close();
 }
