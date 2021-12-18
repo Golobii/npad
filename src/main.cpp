@@ -25,13 +25,17 @@ private:
   void moveCursorLeft();
   void moveCursorRight();
 
+  void moveLines(int n);
+
   unsigned int getPosition();
   unsigned int getNumOfLines();
-  unsigned int getLineLength(unsigned int line);
+  unsigned int getLineLength(unsigned int n);
 
   unsigned int cursor_x, cursor_y;
   unsigned int index;
-  unsigned int max_x_position = 0;
+  unsigned int prevXPosition = 0;
+
+  unsigned int line;
 
   int max_y, max_x;
 
@@ -108,7 +112,7 @@ void Base::open(string fileName)
           buffer.erase(index - 1, 1);
           index--;
           cursor_x--;
-          max_x_position = cursor_x;
+          prevXPosition = cursor_x;
         }
         break;
       case '\n':
@@ -143,24 +147,42 @@ void Base::open(string fileName)
   }
 }
 
+void Base::moveLines(int n)
+{
+  if (n > 0)
+  {
+    for (unsigned int i = 0; i < n; i++)
+    {
+      lineUp();
+    }
+  }
+  else if (n < 0)
+  {
+    for (unsigned int i = 0; i < abs(n); i++)
+    {
+      lineDown();
+    }
+  }
+}
+
 void Base::moveCursorLeft()
 {
   if (cursor_x > 0)
   {
     cursor_x--;
     index--;
-    max_x_position = cursor_x;
+    prevXPosition = cursor_x;
   }
 }
 
 void Base::moveCursorRight()
 {
-  unsigned int lineLength = getLineLength(cursor_y);
+  unsigned int lineLength = getLineLength(line);
   if (cursor_x + 1 < (mode == INSERT_MODE ? lineLength + 1 : lineLength))
   {
     cursor_x++;
     index++;
-    max_x_position = cursor_x;
+    prevXPosition = cursor_x;
   }
 }
 
@@ -203,7 +225,7 @@ unsigned int Base::getPosition()
 {
   unsigned int pos = 0;
   char current = buffer.substr(pos, 1).c_str()[0];
-  int times = cursor_y;
+  int times = line;
 
   while (times > 0)
   {
@@ -226,11 +248,12 @@ unsigned int Base::getPosition()
 void Base::lineUp()
 {
   unsigned int lineLenght;
-  if (cursor_y > 0)
+  if (line > 0)
   {
     cursor_y--;
+    line--;
   }
-  lineLenght = getLineLength(cursor_y);
+  lineLenght = getLineLength(line);
   if (cursor_x > lineLenght)
   {
     lineLenght = lineLenght;
@@ -244,9 +267,9 @@ void Base::lineUp()
     }
   }
 
-  if (max_x_position <= lineLenght)
+  if (prevXPosition <= lineLenght)
   {
-    cursor_x = max_x_position;
+    cursor_x = prevXPosition;
   }
 
   index = getPosition();
@@ -255,12 +278,13 @@ void Base::lineUp()
 void Base::lineDown()
 {
   unsigned int lineLenght;
-  if (cursor_y + 1 < getNumOfLines())
+  if (line + 1 < getNumOfLines())
   {
     cursor_y++;
+    line++;
   }
 
-  lineLenght = getLineLength(cursor_y);
+  lineLenght = getLineLength(line);
   if (cursor_x > lineLenght)
   {
     if (lineLenght > 0)
@@ -273,9 +297,9 @@ void Base::lineDown()
     }
   }
 
-  if (max_x_position <= lineLenght)
+  if (prevXPosition <= lineLenght)
   {
-    cursor_x = max_x_position;
+    cursor_x = prevXPosition;
   }
 
   index = getPosition();
