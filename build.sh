@@ -1,0 +1,1 @@
+g++ -o main -I ./src src/*.cpp -lncurses -pthread && ./main src/main.cpp
