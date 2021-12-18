@@ -1,1 +1,1 @@
-g++ -o main -I ./src src/*.cpp -lncurses -pthread && ./main src/main.cpp
+g++ -o build/main -I ./src src/*.cpp -lncurses -pthread && ./build/main src/main.cpp
