@@ -9,6 +9,7 @@
     "unordered_map": "cpp",
     "istream": "cpp",
     "ostream": "cpp",
-    "streambuf": "cpp"
+    "streambuf": "cpp",
+    "typeinfo": "cpp"
   }
 }

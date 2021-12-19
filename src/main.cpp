@@ -1,11 +1,13 @@
 #include <iostream>
 #include <ncurses.h>
-#include <pthread.h>
 
 #include "../include/fileManager.h"
 
 #define NORMAL 1
 #define CURSOR_COLOR_PAIR 2
+
+#define SCROLL_SPEED 2
+#define BOTTOM_OFFSET 2
 
 void *manageKeys(void *threadId);
 
@@ -31,11 +33,16 @@ private:
   unsigned int getNumOfLines();
   unsigned int getLineLength(unsigned int n);
 
+  void scrollPage(int n);
+
   unsigned int cursor_x, cursor_y;
   unsigned int index;
   unsigned int prevXPosition = 0;
 
-  unsigned int line;
+  unsigned int relativeLine;
+
+  unsigned int scrollOffset = 0;
+  unsigned int scrollOffsetY = 0;
 
   int max_y, max_x;
 
@@ -45,13 +52,67 @@ public:
   void open(string fileName);
 };
 
+void Base::scrollPage(int n)
+{
+
+  unsigned int nChars = 0;
+  unsigned int lineLength;
+  unsigned int numOfLines = getNumOfLines();
+  char current;
+  if (n > 0)
+  {
+    if (relativeLine + BOTTOM_OFFSET > numOfLines)
+    {
+      return;
+    }
+    for (unsigned int i = 0; i < n; i++)
+    {
+      nChars += getLineLength(scrollOffsetY++) + 1;
+      relativeLine++;
+    }
+
+    scrollOffset += nChars;
+
+    lineLength = getLineLength(relativeLine);
+  }
+  else if (n < 0)
+  {
+    if ((int)relativeLine - abs(n) < 0)
+    {
+      return;
+    }
+    for (unsigned int i = 0; i < abs(n); i++)
+    {
+      scrollOffsetY--;
+      nChars += getLineLength(scrollOffsetY) + 1;
+      relativeLine--;
+    }
+
+    scrollOffset -= nChars;
+
+    lineLength = getLineLength(relativeLine);
+  }
+
+  if (prevXPosition <= lineLength)
+  {
+    cursor_x = prevXPosition;
+  }
+  else
+  {
+    if (lineLength > 0)
+      cursor_x = lineLength - 1;
+    else
+      cursor_x = 0;
+  }
+
+  index = getPosition();
+}
+
 void Base::open(string fileName)
 {
   init();
   Base::buffer = FileManager::readFile(fileName);
 
-  // pthread_t keysThread;
-  // pthread_create(&keysThread, NULL, &manageKeys, (void *)this);
   string cursor_display;
 
   index = 0;
@@ -62,7 +123,7 @@ void Base::open(string fileName)
   {
     getmaxyx(stdscr, max_y, max_x);
     attron(COLOR_PAIR(NORMAL));
-    mvprintw(0, 0, "%s", Base::buffer.c_str());
+    mvprintw(0, 0, "%s", Base::buffer.substr(scrollOffset).c_str());
     attron(COLOR_PAIR(CURSOR_COLOR_PAIR));
     cursor_display = buffer.substr(index, 1).c_str();
     if (cursor_display == "\n")
@@ -81,6 +142,9 @@ void Base::open(string fileName)
       case 'q':
         endwin();
         exit(0);
+        break;
+      case 't':
+        scrollPage(-SCROLL_SPEED);
         break;
       case 'i':
         mode = INSERT_MODE;
@@ -124,6 +188,7 @@ void Base::open(string fileName)
         buffer.insert(index, "    ");
         index += 4;
         cursor_x += 4;
+        prevXPosition += 4;
         break;
       case 2: // arrow down
         lineDown();
@@ -141,6 +206,7 @@ void Base::open(string fileName)
         buffer.insert(index, 1, ch);
         index++;
         cursor_x++;
+        prevXPosition++;
         break;
       }
     }
@@ -177,7 +243,7 @@ void Base::moveCursorLeft()
 
 void Base::moveCursorRight()
 {
-  unsigned int lineLength = getLineLength(line);
+  unsigned int lineLength = getLineLength(relativeLine);
   if (cursor_x + 1 < (mode == INSERT_MODE ? lineLength + 1 : lineLength))
   {
     cursor_x++;
@@ -225,7 +291,7 @@ unsigned int Base::getPosition()
 {
   unsigned int pos = 0;
   char current = buffer.substr(pos, 1).c_str()[0];
-  int times = line;
+  int times = relativeLine;
 
   while (times > 0)
   {
@@ -247,16 +313,20 @@ unsigned int Base::getPosition()
 
 void Base::lineUp()
 {
+  if (cursor_y <= 0)
+  {
+    scrollPage(-SCROLL_SPEED);
+    return;
+  }
   unsigned int lineLenght;
-  if (line > 0)
+  if (relativeLine > 0)
   {
     cursor_y--;
-    line--;
+    relativeLine--;
   }
-  lineLenght = getLineLength(line);
-  if (cursor_x > lineLenght)
+  lineLenght = getLineLength(relativeLine);
+  if (cursor_x > lineLenght || prevXPosition > cursor_x)
   {
-    lineLenght = lineLenght;
     if (lineLenght > 0)
     {
       cursor_x = lineLenght - 1;
@@ -277,15 +347,20 @@ void Base::lineUp()
 
 void Base::lineDown()
 {
+  if (cursor_y >= max_y - BOTTOM_OFFSET)
+  {
+    scrollPage(SCROLL_SPEED);
+    return;
+  }
   unsigned int lineLenght;
-  if (line + 1 < getNumOfLines())
+  if (relativeLine + 1 < getNumOfLines())
   {
     cursor_y++;
-    line++;
+    relativeLine++;
   }
 
-  lineLenght = getLineLength(line);
-  if (cursor_x > lineLenght)
+  lineLenght = getLineLength(relativeLine);
+  if (cursor_x > lineLenght || prevXPosition > cursor_x)
   {
     if (lineLenght > 0)
     {
