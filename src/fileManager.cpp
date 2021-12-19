@@ -22,6 +22,22 @@ string FileManager::readFile(string fileName)
     return fileContents;
 }
 
+void FileManager::writeToFile(string fileName, string buffer)
+{
+    std::ofstream file;
+    file.open(fileName.c_str());
+
+    if (file.is_open())
+    {
+        file << buffer;
+        file.close();
+    }
+    else
+    {
+        log("Unable to open file");
+    }
+}
+
 void FileManager::log(string message)
 {
     std::ofstream logFile;

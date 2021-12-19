@@ -16,6 +16,8 @@ protected:
 
     string readFile(string fileName);
 
+    void writeToFile(string fileName, string buffer);
+
     void log(string message);
 };
 

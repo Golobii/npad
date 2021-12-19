@@ -143,8 +143,8 @@ void Base::open(string fileName)
         endwin();
         exit(0);
         break;
-      case 't':
-        scrollPage(-SCROLL_SPEED);
+      case 's':
+        FileManager::writeToFile(fileName, Base::buffer);
         break;
       case 'i':
         mode = INSERT_MODE;
@@ -410,6 +410,7 @@ void *manageKeys(void *threadId)
     }
   }
 }
+
 int main(int argc, char *argv[])
 {
   Base base;

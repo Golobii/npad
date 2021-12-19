@@ -1,4 +1,4 @@
-- writing to file
 - readme
 - fix \n removal glitch
 - buffer saving and management
+- add key-chords
