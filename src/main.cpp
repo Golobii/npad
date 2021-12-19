@@ -33,6 +33,8 @@ private:
   unsigned int getNumOfLines();
   unsigned int getLineLength(unsigned int n);
 
+  void wDisplayBuffer(WINDOW *win, string buffer);
+
   void scrollPage(int n);
 
   unsigned int cursor_x, cursor_y;
@@ -43,6 +45,8 @@ private:
 
   unsigned int scrollOffset = 0;
   unsigned int scrollOffsetY = 0;
+
+  unsigned int codeWinX, codeWinY;
 
   int max_y, max_x;
 
@@ -108,10 +112,34 @@ void Base::scrollPage(int n)
   index = getPosition();
 }
 
+void Base::wDisplayBuffer(WINDOW *win, string buffer)
+{
+  unsigned int line = getNumOfLines();
+  char current;
+  string displayStr;
+  int index = 0;
+  unsigned int lineLength;
+
+  for (unsigned int i = 0; i < line; i++)
+  {
+    displayStr = "";
+    lineLength = getLineLength(i);
+    for (unsigned int j = 0; j <= lineLength; j++)
+    {
+      current = buffer.at(index++);
+      displayStr += current;
+    }
+    mvwprintw(win, i + 1, 1, displayStr.c_str());
+  }
+  // mvwprintw(win, 1, 1, buffer.c_str());
+}
+
 void Base::open(string fileName)
 {
   init();
   Base::buffer = FileManager::readFile(fileName);
+
+  WINDOW *codeWin = newwin(0, 0, 0, 0);
 
   string cursor_display;
 
@@ -122,18 +150,31 @@ void Base::open(string fileName)
   while (true)
   {
     getmaxyx(stdscr, max_y, max_x);
-    attron(COLOR_PAIR(NORMAL));
-    mvprintw(0, 0, "%s", Base::buffer.substr(scrollOffset).c_str());
-    attron(COLOR_PAIR(CURSOR_COLOR_PAIR));
+
+    codeWinX = max_x / 2;
+    codeWinY = max_y - 2;
+    wresize(codeWin, codeWinY, codeWinX);
+    wmove(codeWin, 2, 2);
+
+    wattron(codeWin, COLOR_PAIR(NORMAL));
+    // mvwprintw(codeWin, 1, 1, "%s", Base::buffer.substr(scrollOffset).c_str());
+    // output buffer.c_str() to codeWin
+    wDisplayBuffer(codeWin, Base::buffer);
+
+    wattron(codeWin, COLOR_PAIR(CURSOR_COLOR_PAIR));
     cursor_display = buffer.substr(index, 1).c_str();
     if (cursor_display == "\n")
     {
       cursor_display = " ";
     }
-    mvprintw(cursor_y, cursor_x, cursor_display.c_str());
-    attroff(COLOR_PAIR(CURSOR_COLOR_PAIR));
-    mvprintw(max_y - 1, 0, (mode == NORMAL_MODE ? "--NORMAL--" : "--INSERT--"));
-    refresh();
+    mvwprintw(codeWin, cursor_y + 1, cursor_x + 1, cursor_display.c_str());
+    wattroff(codeWin, COLOR_PAIR(CURSOR_COLOR_PAIR));
+
+    // mvwprintw(codeWin, max_y - 1, 0, (mode == NORMAL_MODE ? "--NORMAL--" : "--INSERT--"));
+
+    box(codeWin, 0, 0);
+    wrefresh(codeWin);
+
     char ch = getch();
     if (mode == NORMAL_MODE)
     {
@@ -347,7 +388,7 @@ void Base::lineUp()
 
 void Base::lineDown()
 {
-  if (cursor_y >= max_y - BOTTOM_OFFSET)
+  if (cursor_y >= codeWinY)
   {
     scrollPage(SCROLL_SPEED);
     return;
